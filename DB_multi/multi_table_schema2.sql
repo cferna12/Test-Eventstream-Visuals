@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS eventstream_passes (
   end_x           REAL,
   end_y           REAL
   -- maybe add length/angle
+  -- add recipient
 );
 
 CREATE TABLE IF NOT EXISTS eventstream_carries (

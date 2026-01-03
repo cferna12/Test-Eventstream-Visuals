@@ -95,7 +95,7 @@ INSERT INTO eventstream_events (
   type_primary, type_secondary,
   location_x, location_y,
   team_id, player_id, possession_id,
-  player_position,
+  player_name, team_name, player_position,
   raw
 ) 
 VALUES (
@@ -294,11 +294,6 @@ def upsert_csv(csv_path: str, dsn: str, chunksize: int = 20000) -> None:
                 #     carry_records = [row_to_carry_record(r) for _, r in chunk.loc[carry_mask].iterrows()]
                 #     cur.executemany(UPSERT_CARRY_SQL, carry_records)
 
-                if "type.secondary" in chunk.columns:
-                    carry_mask = chunk["type.secondary"].astype(str).str.contains("carry", na=False)
-                carry_mask = carry_mask | (chunk["type.primary"] == "carry")
-
-
                 # Shots
                 shot_mask = chunk["type.primary"] == "shot"
                 if shot_mask.any():
@@ -326,6 +321,15 @@ def upsert_csv(csv_path: str, dsn: str, chunksize: int = 20000) -> None:
                 if hasattr(ground_mask, "any") and ground_mask.any():
                     ground_records = [row_to_ground_duel_record(r) for _, r in chunk.loc[ground_mask].iterrows()]
                     cur.executemany(UPSERT_GROUND_DUEL_SQL, ground_records)
+
+                carry_mask = False
+                if "type.secondary" in chunk.columns:
+                    carry_mask = chunk["type.secondary"].astype(str).str.contains("carry", na=False)
+                carry_mask = carry_mask | (chunk["type.primary"] == "carry")
+
+                if hasattr(carry_mask, "any") and carry_mask.any():
+                    carry_records = [row_to_carry_record(r) for _, r in chunk.loc[carry_mask].iterrows()]
+                    cur.executemany(UPSERT_CARRY_SQL, carry_records)
 
                 conn.commit()
                 print(f"Upserted rows {start:,}..{min(start + chunksize, total):,}")
