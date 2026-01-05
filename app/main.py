@@ -71,7 +71,12 @@ app = FastAPI(title="Eventstream Heatmaps (POC)", version="0.1.0", lifespan=life
 
 from app.routers.touchmaps_v3 import router as touchmaps_router_v3
 from app.routers.heatmaps import router as heatmaps_router
+from app.routers.passlinks import router as passlinks_router
+from app.routers.passnetwork_image_v2 import router as passnetwork_router
+from app.routers.possession_chains import router as possessionchains_router
 
 app.include_router(touchmaps_router_v3)
 app.include_router(heatmaps_router)
-
+app.include_router(passlinks_router)
+app.include_router(passnetwork_router)
+app.include_router(possessionchains_router)

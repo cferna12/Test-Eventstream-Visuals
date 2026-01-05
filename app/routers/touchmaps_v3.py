@@ -219,19 +219,166 @@ def _fetch_action_rows(
 # -----------------------------
 # DEFAULT points endpoint (re-included)
 # -----------------------------
+# @router.get("/points", response_model=PointsResponse)
+# def get_points(
+#     player_id: int,
+#     match_id: Optional[int] = None,
+#     competition_id: Optional[int] = None,
+#     season_id: Optional[int] = None,
+#     primary: Optional[str] = Query(default=None, description="e.type_primary"),
+#     secondary_any: Optional[List[str]] = Query(default=None),
+#     bbox: Optional[str] = None,
+#     limit: Optional[int] = None,
+# ):
+#     bbox_t = _parse_bbox(bbox)
+
+#     where_parts: List[sql.SQL] = []
+#     params: List[Any] = []
+
+#     _add_common_filters(
+#         where_parts=where_parts,
+#         params=params,
+#         player_id=player_id,
+#         match_id=match_id,
+#         competition_id=competition_id,
+#         season_id=season_id,
+#         bbox=bbox_t,
+#     )
+
+#     if primary is not None:
+#         where_parts.append(sql.SQL("e.type_primary = %s"))
+#         params.append(primary)
+
+#     _add_secondary_any_filter(where_parts=where_parts, params=params, secondary_any=secondary_any, table_alias="e")
+
+#     q = sql.SQL("""
+#         SELECT e.location_x, e.location_y
+#         FROM eventstream_events e
+#         WHERE {where}
+#         ORDER BY e.id
+#     """).format(where=sql.SQL(" AND ").join(where_parts))
+
+#     if limit is not None:
+#         q = q + sql.SQL(" LIMIT %s")
+#         params.append(limit)
+
+#     p =_get_pool()
+#     with p.connection() as conn:
+#         with conn.cursor() as cur:
+#             cur.execute(q, params)
+#             rows = cur.fetchall()
+
+#     points_xy = [[float(x), float(y)] for (x, y) in rows]
+#     return {"player_id": player_id, "n": len(rows), "points_xy": points_xy}
+
+
+# ----------------------------
+# TODO: update to include pass receptions
+# -----------------------------
+def _fetch_reception_rows(
+    *,
+    recipient_id: int,
+    match_id: Optional[int],
+    competition_id: Optional[int],
+    season_id: Optional[int],
+    bbox: Optional[Tuple[float, float, float, float]],
+    limit: Optional[int],
+    secondary_any: Optional[List[str]] = None,  # optional: filter on pass secondary tags
+    order_by: str = "e.id",
+) -> list[tuple]:
+    """
+    Receptions are encoded on pass events:
+      receiver = eventstream_passes.recipient_id
+      reception location = eventstream_passes.end_x/end_y
+    """
+    where_parts: List[sql.SQL] = []
+    params: List[Any] = []
+
+    # recipient filter lives on pass table
+    where_parts.append(sql.SQL("p.recipient_id = %s"))
+    params.append(recipient_id)
+
+    # match/season/comp filters live on events table
+    if match_id is not None:
+        where_parts.append(sql.SQL("e.match_id = %s"))
+        params.append(match_id)
+    if competition_id is not None:
+        where_parts.append(sql.SQL("e.competition_id = %s"))
+        params.append(competition_id)
+    if season_id is not None:
+        where_parts.append(sql.SQL("e.season_id = %s"))
+        params.append(season_id)
+
+    # ensure reception coordinates exist
+    where_parts.append(sql.SQL("p.end_x IS NOT NULL"))
+    where_parts.append(sql.SQL("p.end_y IS NOT NULL"))
+
+    # bbox applies to reception coords, not event start coords
+    if bbox:
+        x_min, x_max, y_min, y_max = bbox
+        where_parts.append(sql.SQL("p.end_x BETWEEN %s AND %s"))
+        params += [x_min, x_max]
+        where_parts.append(sql.SQL("p.end_y BETWEEN %s AND %s"))
+        params += [y_min, y_max]
+
+    # optional: filter by pass secondary tags (if you store them on events.type_secondary)
+    if secondary_any:
+        where_parts.append(sql.SQL("e.type_secondary && %s"))
+        params.append(secondary_any)
+
+    # only pass events
+    where_parts.append(sql.SQL("e.type_primary = %s"))
+    params.append("pass")
+
+    q = sql.SQL("""
+        SELECT p.end_x, p.end_y
+        FROM eventstream_passes p
+        JOIN eventstream_events e ON e.id = p.event_id
+        WHERE {where}
+        ORDER BY {order_by}
+    """).format(
+        where=sql.SQL(" AND ").join(where_parts),
+        order_by=sql.SQL(order_by),
+    )
+
+    if limit is not None:
+        q = q + sql.SQL(" LIMIT %s")
+        params.append(limit)
+
+    ppool = _get_pool()
+    with ppool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(q, params)
+            return cur.fetchall()
+
 @router.get("/points", response_model=PointsResponse)
 def get_points(
     player_id: int,
     match_id: Optional[int] = None,
     competition_id: Optional[int] = None,
     season_id: Optional[int] = None,
-    primary: Optional[str] = Query(default=None, description="e.type_primary"),
+    primary: Optional[str] = Query(default=None, description="e.type_primary OR special token pass_reception"),
     secondary_any: Optional[List[str]] = Query(default=None),
     bbox: Optional[str] = None,
     limit: Optional[int] = None,
 ):
     bbox_t = _parse_bbox(bbox)
 
+    # SPECIAL: receptions (not a true primary)
+    if primary == "pass_reception":
+        rows = _fetch_reception_rows(
+            recipient_id=player_id,
+            match_id=match_id,
+            competition_id=competition_id,
+            season_id=season_id,
+            bbox=bbox_t,
+            limit=limit,
+            secondary_any=secondary_any,
+        )
+        points_xy = [[float(x), float(y)] for (x, y) in rows]
+        return {"player_id": player_id, "n": len(rows), "points_xy": points_xy}
+
+    # NORMAL: existing eventstream_events query (start locations)
     where_parts: List[sql.SQL] = []
     params: List[Any] = []
 
@@ -262,8 +409,8 @@ def get_points(
         q = q + sql.SQL(" LIMIT %s")
         params.append(limit)
 
-    p =_get_pool()
-    with p.connection() as conn:
+    ppool = _get_pool()
+    with ppool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute(q, params)
             rows = cur.fetchall()

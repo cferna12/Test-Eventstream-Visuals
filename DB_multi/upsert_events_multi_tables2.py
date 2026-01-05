@@ -8,6 +8,42 @@ import pandas as pd
 import psycopg
 from psycopg.types.json import Jsonb
 
+def parse_dict_id_name_pos(v: Any) -> tuple[Optional[int], Optional[str], Optional[str]]:
+    """
+    Parses {'id': 123, 'name': 'X', 'position': 'Y'} from:
+      - dict
+      - stringified dict
+    """
+    if v is None or (isinstance(v, float) and pd.isna(v)) or v == "":
+        return (None, None, None)
+
+    d = None
+    if isinstance(v, dict):
+        d = v
+    elif isinstance(v, str):
+        s = v.strip()
+        if s == "" or s.lower() in {"nan", "none"}:
+            return (None, None, None)
+        try:
+            out = ast.literal_eval(s)
+            if isinstance(out, dict):
+                d = out
+        except Exception:
+            return (None, None, None)
+
+    if not isinstance(d, dict):
+        return (None, None, None)
+
+    rid = d.get("id")
+    rname = d.get("name")
+    rpos = d.get("position")
+
+    return (
+        int(rid) if rid is not None else None,
+        str(rname) if rname is not None else None,
+        str(rpos) if rpos is not None else None,
+    )
+
 
 def parse_list_str(v: Any) -> Optional[list]:
     if v is None or (isinstance(v, float) and pd.isna(v)) or v == "":
@@ -133,15 +169,33 @@ ON CONFLICT (id) DO UPDATE SET
 ;
 """
 
+# UPSERT_PASS_SQL = """
+# INSERT INTO eventstream_passes (event_id, accurate, end_x, end_y)
+# VALUES (%s, %s, %s, %s)
+# ON CONFLICT (event_id) DO UPDATE SET
+#   accurate = EXCLUDED.accurate,
+#   end_x = EXCLUDED.end_x,
+#   end_y = EXCLUDED.end_y
+# ;
+# """
+
+# TODO updated to include recipient
 UPSERT_PASS_SQL = """
-INSERT INTO eventstream_passes (event_id, accurate, end_x, end_y)
-VALUES (%s, %s, %s, %s)
+INSERT INTO eventstream_passes (
+  event_id, accurate, end_x, end_y,
+  recipient_id, recipient_name, recipient_position
+)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (event_id) DO UPDATE SET
   accurate = EXCLUDED.accurate,
   end_x = EXCLUDED.end_x,
-  end_y = EXCLUDED.end_y
+  end_y = EXCLUDED.end_y,
+  recipient_id = EXCLUDED.recipient_id,
+  recipient_name = EXCLUDED.recipient_name,
+  recipient_position = EXCLUDED.recipient_position
 ;
 """
+
 
 UPSERT_CARRY_SQL = """
 INSERT INTO eventstream_carries (event_id, progression, end_x, end_y)
@@ -208,20 +262,36 @@ def row_to_event_record(r: pd.Series):
         to_int(r.get("team.id")),
         to_int(r.get("player.id")),
         to_int(r.get("possession.id")),
-        r.get("team.name"),
         r.get("player.name"),
+        r.get("team.name"),
         r.get("player.position"),
         Jsonb(raw),
     )
 
 
+# def row_to_pass_record(r: pd.Series):
+#     ex, ey = parse_dict_xy(r.get("pass.endLocation"))
+#     return (
+#         to_int(r.get("id")),
+#         to_bool(r.get("pass.accurate")),
+#         ex,
+#         ey,
+#     )
+
+
+# TODO update to include row_to_pass record
 def row_to_pass_record(r: pd.Series):
     ex, ey = parse_dict_xy(r.get("pass.endLocation"))
+    rid, rname, rpos = parse_dict_id_name_pos(r.get("pass.recipient"))
+
     return (
         to_int(r.get("id")),
         to_bool(r.get("pass.accurate")),
         ex,
         ey,
+        rid,
+        rname,
+        rpos,
     )
 
 

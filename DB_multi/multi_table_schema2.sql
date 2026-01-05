@@ -40,9 +40,12 @@ CREATE TABLE IF NOT EXISTS eventstream_passes (
   event_id        BIGINT PRIMARY KEY REFERENCES eventstream_events(id) ON DELETE CASCADE,
   accurate        BOOLEAN,
   end_x           REAL,
-  end_y           REAL
+  end_y           REAL,
   -- maybe add length/angle
   -- add recipient
+  recipient_id          BIGINT,
+  recipient_name        TEXT,
+  recipient_position    TEXT
 );
 
 CREATE TABLE IF NOT EXISTS eventstream_carries (
@@ -92,5 +95,16 @@ CREATE INDEX IF NOT EXISTS idx_ev_location
 
 CREATE INDEX IF NOT EXISTS idx_ev_secondary_gin
   ON eventstream_events USING GIN (type_secondary);
+
+  -- recipient-based queries (receptions, pass networks)
+CREATE INDEX IF NOT EXISTS idx_pass_recipient_id
+  ON eventstream_passes (recipient_id);
+
+-- pass edges: (passer -> recipient) often filters by passer in events, recipient in passes
+CREATE INDEX IF NOT EXISTS idx_pass_recipient_event
+  ON eventstream_passes (recipient_id, event_id);
+
+CREATE INDEX IF NOT EXISTS idx_ev_match_player_primary
+  ON eventstream_events (match_id, player_id, type_primary);
 
 COMMIT;
