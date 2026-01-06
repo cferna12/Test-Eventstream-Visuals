@@ -84,8 +84,11 @@ Typical usage:
 ## Getting Started (High-Level)
 
 1. Initialize the database schema using scripts in `DB_multi/`
+    - `python DB/apply_schema.py`
 2. Ingest or upsert event data
+    - `python DB/upsert_root_events.py`
 3. Start the FastAPI application from `app/`
+    - `uvicorn app.main:app --reload --port 8000`
 4. Access API documentation via FastAPI’s `/docs` endpoint
 
 ---
