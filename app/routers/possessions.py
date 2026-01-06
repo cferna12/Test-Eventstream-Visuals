@@ -3,19 +3,19 @@ from __future__ import annotations
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, Response, HTTPException
 
-from app_refactored.db import POOL
-from app_refactored.utils.possessions import (
+from app.db import POOL
+from app.utils.possessions import (
     DEFAULT_PITCH_TYPE,
     DEFAULT_SHOT_TO_GOAL,
 )
-from app_refactored.services.possessions import (
+from app.services.possessions import (
     event_time_seconds,
     fetch_possession_list,
     fetch_possession_chain,
     render_possession_chain_image,
 )
 
-from app_refactored.schemas.possessions import (
+from app.schemas.possessions import (
     PossessionListResponse,
     PossessionChainResponse,
 )

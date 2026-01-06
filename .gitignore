@@ -27,8 +27,9 @@ data/
 /two_games.csv
 /upsert_events_multi_tables.py
 /upsert_events.py
+/DB/upsert_events_multi_tables2.py
 
 # --- Root-level directories ---
 /data/
-/DB/
-
+/DB_old/
+/app_old/

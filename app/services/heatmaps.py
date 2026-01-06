@@ -13,7 +13,7 @@ from matplotlib import colors
 from mplsoccer import Pitch
 from scipy.ndimage import gaussian_filter
 
-from app_refactored.utils.heatmaps import (
+from app.utils.heatmaps import (
     BINS_X, BINS_Y,
     ON_BALL_PRIMARY_DEFAULT,
     DEFAULT_PITCH_TYPE,

@@ -14,7 +14,7 @@ import matplotlib as mpl
 from mplsoccer import Pitch
 import matplotlib.patheffects as pe
 
-from app_refactored.utils.pass_networks import (
+from app.utils.pass_networks import (
     DEFAULT_PITCH_TYPE,
     DEFAULT_PITCH_BG,
     DEFAULT_PITCH_LINE_COLOR,

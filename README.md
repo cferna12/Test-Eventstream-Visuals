@@ -69,6 +69,8 @@ Typical usage:
 - Run locally during development
 - Deploy as a backend service connected to a Postgres instance
 
+- Run using: uvicorn app.main:app --reload --port 8000   
+
 ---
 
 ## Development Notes

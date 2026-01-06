@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from psycopg import sql
 
-from app_refactored.utils.sql_filters import (
+from app.utils.sql_filters import (
     BBox,
     add_common_event_filters,
     add_secondary_any_filter,

@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from mplsoccer import Pitch
 
-from app_refactored.utils.possessions import (
+from app.utils.possessions import (
     DEFAULT_PITCH_TYPE,
     DEFAULT_PITCH_BG_COLOR,
     DEFAULT_PITCH_LINE_COLOR,
