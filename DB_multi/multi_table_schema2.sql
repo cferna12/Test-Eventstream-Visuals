@@ -1,4 +1,5 @@
 -- schema.sql (recommended: all-lower, snake_case)
+--- Schema for storing event stream data for visualizations
 BEGIN;
 
 -- Base events table: thin common fields for heatmaps + joins

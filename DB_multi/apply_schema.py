@@ -1,3 +1,7 @@
+'''
+Docstring for DB_multi.apply_schema
+'''
+
 from pathlib import Path
 import psycopg
 import os
