@@ -18,8 +18,12 @@ from app.routers.touchmaps import router as touchmaps_router
 from app.routers.heatmaps import router as heatmaps_router
 from app.routers.possessions import router as possessions_router
 from app.routers.passnetwork_image import router as passnetwork_router
+from app.routers.passlinks import router as passlinks_router
+from app.routers.archetypes import router as archetypes_router
 
 app.include_router(touchmaps_router)
 app.include_router(heatmaps_router)
 app.include_router(possessions_router)
 app.include_router(passnetwork_router)
+app.include_router(passlinks_router)
+app.include_router(archetypes_router)

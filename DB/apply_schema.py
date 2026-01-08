@@ -1,24 +1,50 @@
-'''
-Docstring for DB_multi.apply_schema
-'''
+"""
+Apply a SQL schema file to a Postgres database.
+
+Usage:
+    python apply_schema.py path/to/schema.sql
+
+Environment variables:
+    PG_DSN - Postgres connection string
+"""
 
 from pathlib import Path
-import psycopg
+import argparse
 import os
+import psycopg
 
-# DSN example:
-# postgresql://user:password@host:5432/dbname
-dsn = "postgresql://postgres:postgres@localhost:5432/postgres"
-DSN = os.environ.get("PG_DSN", dsn)
-if not DSN:
-    raise RuntimeError("Set PG_DSN env var")
 
-schema_path = "DB_multi/multi_table_schema2.sql"
-schema_sql = Path(schema_path).read_text(encoding="utf-8")
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Apply a SQL schema file to a Postgres database"
+    )
+    parser.add_argument(
+        "schema_path",
+        type=Path,
+        help="Path to the SQL schema file to apply",
+    )
+    args = parser.parse_args()
 
-with psycopg.connect(DSN) as conn:
-    with conn.cursor() as cur:
-        cur.execute(schema_sql)
-    conn.commit()
+    # DSN example:
+    # postgresql://user:password@host:5432/dbname
+    default_dsn = "postgresql://postgres:postgres@localhost:5432/postgres"
+    dsn = os.environ.get("PG_DSN", default_dsn)
 
-print("✅ Schema applied successfully")
+    if not dsn:
+        raise RuntimeError("Set PG_DSN environment variable")
+
+    if not args.schema_path.exists():
+        raise FileNotFoundError(f"Schema file not found: {args.schema_path}")
+
+    schema_sql = args.schema_path.read_text(encoding="utf-8")
+
+    with psycopg.connect(dsn) as conn:
+        with conn.cursor() as cur:
+            cur.execute(schema_sql)
+        conn.commit()
+
+    print(f"✅ Schema applied successfully: {args.schema_path}")
+
+
+if __name__ == "__main__":
+    main()
